@@ -38,6 +38,7 @@ public class DownloadCommand implements CliCommand
     String downloadFormat = configuration.getDownloadFormat();
     String languageKey = configuration.getLanguageKey();
     List<String> downloadOptions = configuration.getDownloadOptions();
+    boolean removeEmptyKeys = configuration.getRemoveEmptyKeys();
 
     if (downloadPath.contains(TemplateKeys.NAMESPACE_TEMPLATE_KEY))
     {
@@ -61,7 +62,7 @@ public class DownloadCommand implements CliCommand
       List<DownloadableFile> downloadableFiles = client.fetchDownloadableFiles(downloadRequest);
       downloadableFiles
               .parallelStream()
-              .forEach(downloadableFile -> client.downloadFile(downloadableFile, downloadPath));
+              .forEach(downloadableFile -> client.downloadFile(downloadableFile, downloadPath, removeEmptyKeys));
       log.info(" 🎉 Download success!");
     } catch (InterruptedException e)
     {

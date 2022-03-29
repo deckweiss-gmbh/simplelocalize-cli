@@ -25,6 +25,8 @@ public class Configuration
 
   private String languageKey;
 
+  private boolean removeEmptyKeys;
+
   public String getSearchDir()
   {
     return searchDir;
@@ -72,7 +74,7 @@ public class Configuration
 
   public void setUploadPath(String uploadPath)
   {
-    this.uploadPath = uploadPath;
+    this.uploadPath = uploadPath.replace('\\', '/');
   }
 
   public String getUploadFormat()
@@ -133,6 +135,16 @@ public class Configuration
   public void setUploadOptions(List<String> uploadOptions)
   {
     this.uploadOptions = uploadOptions;
+  }
+
+  public boolean getRemoveEmptyKeys()
+  {
+    return removeEmptyKeys;
+  }
+
+  public void setRemoveEmptyKeys(boolean removeEmptyKeys)
+  {
+    this.removeEmptyKeys = removeEmptyKeys;
   }
 
 }

@@ -49,10 +49,10 @@ public class DownloadCommandTest
     Mockito.verify(client, Mockito.times(1))
             .downloadFile(
                     aDownloadableFile().withNamespace("common").withUrl("https://s3.simplelocalize.io/file1.xml").build(),
-                    "./my-project-path");
+                    "./my-project-path", false);
     Mockito.verify(client, Mockito.times(1))
             .downloadFile(
                     aDownloadableFile().withNamespace("common").withUrl("https://s3.simplelocalize.io/file2.xml").build(),
-                    "./my-project-path");
+                    "./my-project-path", false);
   }
 }

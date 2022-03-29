@@ -254,7 +254,7 @@ public class SimpleLocalizeClientTest
     String downloadPath = "file.json";
 
     //when
-    client.downloadFile(downloadableFile, downloadPath);
+    client.downloadFile(downloadableFile, downloadPath, false);
 
     //then
   }

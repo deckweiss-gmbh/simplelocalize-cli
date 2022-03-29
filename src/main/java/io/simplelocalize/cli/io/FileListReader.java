@@ -9,7 +9,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -29,7 +33,7 @@ public class FileListReader
     boolean exists = Files.exists(parentDir);
     if (!exists)
     {
-      String parentDirectory = StringUtils.substringBeforeLast(beforeTemplatePart, File.separator);
+      String parentDirectory = StringUtils.substringBeforeLast(beforeTemplatePart, "/");
       parentDir = Path.of(parentDirectory);
     }
 
@@ -37,22 +41,20 @@ public class FileListReader
     {
       AntPathMatcher antPathMatcher = new AntPathMatcher();
       String uploadPathPattern = uploadPath
+              .substring(uploadPath.equals(beforeTemplatePart) ? 0 : beforeTemplatePart.length())
               .replace(LANGUAGE_TEMPLATE_KEY, "**")
               .replace(NAMESPACE_TEMPLATE_KEY, "**");
       var foundFiles = foundFilesStream
               .filter(Files::isRegularFile)
-              .filter(path -> antPathMatcher.matches(uploadPathPattern, path.toString()))
+              .filter(path -> antPathMatcher.matches(uploadPathPattern, path.toString())) // .replace('\\', '/') !!!!!!!!!!!!!!!!!!!!!!!!
               .collect(Collectors.toList());
       for (Path foundFile : foundFiles)
       {
-        String languageKey = extractTemplateValue(uploadPath, foundFile, LANGUAGE_TEMPLATE_KEY);
-        String pathWithLanguage = uploadPath.replace(LANGUAGE_TEMPLATE_KEY, languageKey);
-        String namespace = extractTemplateValue(pathWithLanguage, foundFile, NAMESPACE_TEMPLATE_KEY);
-        if (StringUtils.isNotBlank(namespace))
-        {
-          String pathWithNamespace = uploadPath.replace(NAMESPACE_TEMPLATE_KEY, namespace);
-          languageKey = extractTemplateValue(pathWithNamespace, foundFile, LANGUAGE_TEMPLATE_KEY);
-        }
+        Map<String, String> templateValues = extractTemplateValues(uploadPath, foundFile);
+
+        String languageKey = templateValues.get(LANGUAGE_TEMPLATE_KEY.replaceAll("^.|.$", ""));
+        String namespace = templateValues.get(NAMESPACE_TEMPLATE_KEY.replaceAll("^.|.$", ""));
+
         FileToUpload fileToUpload = FileToUpload.FileToUploadBuilder.aFileToUpload()
                 .withLanguage(StringUtils.trimToNull(languageKey))
                 .withNamespace(StringUtils.trimToNull(namespace))
@@ -87,21 +89,49 @@ public class FileListReader
     return splitUploadPath[0];
   }
 
-  private String extractTemplateValue(String uploadPath, Path file, String templateKey)
-  {
-    if (!uploadPath.contains(templateKey))
-    {
-      return "";
+  private Map<String, String> extractTemplateValues(String uploadPath, Path file) {
+    Matcher m = Pattern.compile("\\{(\\w*?)}").matcher(uploadPath);
+    Map<String, String> vars = new LinkedHashMap<>();
+    while (m.find()) {
+      vars.put(m.group(1) , null);
     }
-    String[] splitUploadPath = StringUtils.splitByWholeSeparator(uploadPath, templateKey);
-    String beforeTemplatePart = splitUploadPath[0];
-    String afterTemplatePart = splitUploadPath[1];
-    String fileName = file.getFileName().toString();
-    String output = StringUtils.remove(file.toString(), beforeTemplatePart);
-    output = StringUtils.remove(output, afterTemplatePart);
-    output = StringUtils.remove(output, fileName);
-    output = output.replace(File.separator, "");
-    output = StringUtils.remove(output, File.separator);
-    return output.trim();
+
+    String pattern = uploadPath;
+    // escape regex special characters
+    pattern = pattern.replaceAll("([?.])", "\\\\$1");
+    for (String var : vars.keySet()) {
+      // replace placeholders with capture groups
+      pattern = pattern.replaceAll("\\{" + var + "}", "([\\\\w\\\\s]+?)");
+    }
+
+    m = Pattern.compile(pattern).matcher(file.toString().replace('\\', '/'));
+    if (m.matches()) {
+      int i = 0;
+      for (String var : vars.keySet()) {
+        vars.put(var, m.group(++i));
+      }
+    }
+
+    return vars;
   }
+
+//    String regex = uploadPath.replace('{')
+//
+//    Pattern issuePattern = Pattern.compile("(?<project>[A-Z]{3})(?<sep>[-/])(?<org>\\w{3})\\k<sep>(?<num>\\d+)$");
+//
+//    // Create Matcher with a string value.
+//    Matcher issueMatcher = issuePattern.matcher(file.toString().replace('\\','/'));
+//
+//    // We can use capturing group names to get group.
+//    return issueMatcher.group(templateKey);
+
+
+//    String afterTemplatePart = splitUploadPath[1];
+//    String fileName = file.getFileName().toString();
+//    String output = StringUtils.remove(file.toString().replace('\\','/'), beforeTemplatePart);
+//    output = StringUtils.remove(output, afterTemplatePart);
+//    output = StringUtils.remove(output, fileName);
+//    output = output.replace(File.separator, "");
+//    output = StringUtils.remove(output, File.separator);
+//    return output.trim();
 }

@@ -171,6 +171,10 @@ public class SimplelocalizeCliCommand implements Runnable
     {
       configuration.setDownloadOptions(downloadOptions);
     }
+
+    downloadOptions = configuration.getDownloadOptions();
+    configuration.setRemoveEmptyKeys(downloadOptions.remove("REMOVE_EMPTY"));
+
     ConfigurationValidator configurationValidator = new ConfigurationValidator();
     configurationValidator.validateDownloadConfiguration(configuration);
     SimpleLocalizeClient client = SimpleLocalizeClient.withProductionServer(configuration.getApiKey());

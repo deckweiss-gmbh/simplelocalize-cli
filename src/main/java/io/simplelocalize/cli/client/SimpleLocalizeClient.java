@@ -3,26 +3,29 @@ package io.simplelocalize.cli.client;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.Option;
+import com.oracle.svm.core.util.json.JSONParser;
+import com.oracle.svm.core.util.json.JSONParserException;
 import io.simplelocalize.cli.client.dto.DownloadRequest;
 import io.simplelocalize.cli.client.dto.DownloadableFile;
 import io.simplelocalize.cli.client.dto.ExportResponse;
 import io.simplelocalize.cli.client.dto.UploadRequest;
 import io.simplelocalize.cli.exception.ApiRequestException;
+import io.simplelocalize.cli.util.JsonUtil;
+import net.minidev.json.JSONObject;
+import net.minidev.json.JSONStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
+import java.io.*;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.ParseException;
 import java.time.Duration;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
 import static io.simplelocalize.cli.TemplateKeys.LANGUAGE_TEMPLATE_KEY;
 import static io.simplelocalize.cli.TemplateKeys.NAMESPACE_TEMPLATE_KEY;
@@ -94,7 +97,7 @@ public class SimpleLocalizeClient
     return exportResponse.getFiles();
   }
 
-  public void downloadFile(DownloadableFile downloadableFile, String downloadPathTemplate)
+  public void downloadFile(DownloadableFile downloadableFile, String downloadPathTemplate, boolean removeEmptyKeys)
   {
     Optional<DownloadableFile> optionalDownloadableFile = Optional.of(downloadableFile);
     String downloadPath = downloadPathTemplate
@@ -111,6 +114,9 @@ public class SimpleLocalizeClient
         Files.createDirectories(parentDirectory);
       }
       log.info(" 🌍 Downloading {}", savePath);
+
+      Files.delete(savePath);
+
       httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofFile(savePath));
     } catch (IOException e)
     {
@@ -119,6 +125,10 @@ public class SimpleLocalizeClient
     {
       log.error(" 😝 Download interrupted: {}", savePath, e);
       Thread.currentThread().interrupt();
+    }
+
+    if (removeEmptyKeys) {
+      cleanFile(savePath);
     }
   }
 
@@ -168,5 +178,18 @@ public class SimpleLocalizeClient
     return "";
   }
 
+  private void cleanFile(Path filePath) {
+    try {
+      HashMap obj = (HashMap) new JSONParser(new FileReader(filePath.toString())).parse();
 
+      JsonUtil.removeEmptyFields(obj);
+
+      PrintWriter out1 = new PrintWriter(new FileWriter(filePath.toString()));
+      out1.write(new JSONObject(obj).toJSONString(new JsonUtil.PrettyJSONStyle()));
+      out1.close();
+      log.info(" 😇 Cleaned {}", filePath);
+    } catch (IOException | JSONParserException e) {
+      log.error(" 😝 Cleaning failed: {}", filePath, e);
+    }
+  }
 }
