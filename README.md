@@ -147,6 +147,8 @@ simplelocalize download
 
 Learn more about [download translations command](https://simplelocalize.io/docs/cli/download-translations/).
 
+Added `REMOVE_EMPTY` option.
+
 ## Sync translations
 Sync command combines upload and download commend execution.
 ```properties
